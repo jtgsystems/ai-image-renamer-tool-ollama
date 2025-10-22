@@ -1,3 +1,5 @@
+![Banner](banner.png)
+
 # 🎯 Optimal Image Renamer - AI-Powered Bulk Photo Organizer
 
 > 🚀 **Lightning-fast AI image renaming** using Ollama's LLaVA model with multi-GPU acceleration
@@ -131,7 +133,8 @@ for ((g=0; g<GPU_COUNT; g++)); do
     until curl -s "http://127.0.0.1:$PORT" >/dev/null; do sleep 0.5; done
 
     python "$RENAME_PY" "$IMG_DIR" --yes 2>&1 |
-      awk -v G=$g '{printf("🎮[GPU%d] %s\n", G, $0); fflush()}'
+      awk -v G=$g '{printf("🎮[GPU%d] %s
+", G, $0); fflush()}'
   ) &
 done
 
