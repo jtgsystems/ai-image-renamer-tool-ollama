@@ -10,7 +10,7 @@ ideas that are scattered across all previous renamers that live in the
 * Safe in-place renaming with automatic conflict resolution.
 * Duplicate detection via MD5 hash so the same image is never processed
   twice in a single run.
-* High-quality preprocessing – we **never** overwrite or recompress the
+* High-quality preprocessing - we **never** overwrite or recompress the
   original file, we only convert to RGB in memory when the model
   requires it.
 * Sensible defaults that balance quality and speed (temperature 0.2,
@@ -24,30 +24,30 @@ Python ≥3.8, Ollama and the *llava* model installed.
 
 from __future__ import annotations
 
+import atexit
 import base64
+import contextlib
 import hashlib
 import io
 import json
 import os
 import re
+import subprocess
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional
-
-import subprocess
-import atexit
+from typing import ClassVar
 
 # ---------------------------------------------------------------------------
-# Third-party imports – we defer them so we can install missing packages
+# Third-party imports - we defer them so we can install missing packages
 # automatically on first run.
 # ---------------------------------------------------------------------------
 
 try:
-    import ollama  # type: ignore
-    from PIL import Image  # type: ignore
+    import ollama
+    from PIL import Image
 except ModuleNotFoundError as e:
     print(f"⚠️  Missing dependency: {e.name}. Installing… (this can take a moment)")
     import subprocess
@@ -55,8 +55,8 @@ except ModuleNotFoundError as e:
     pkgs = ["ollama", "pillow"]
     subprocess.check_call([sys.executable, "-m", "pip", "install", "--upgrade", *pkgs])
 
-    import ollama  # type: ignore  # noqa: E402
-    from PIL import Image  # type: ignore  # noqa: E402
+    import ollama
+    from PIL import Image
 
 
 # ---------------------------------------------------------------------------
@@ -64,8 +64,21 @@ except ModuleNotFoundError as e:
 # ---------------------------------------------------------------------------
 
 IMAGE_EXTENSIONS = {
-    ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".tiff", ".tif",
-    ".heic", ".heif", ".avif", ".ico", ".raw", ".cr2", ".nef",
+    ".jpg",
+    ".jpeg",
+    ".png",
+    ".gif",
+    ".bmp",
+    ".webp",
+    ".tiff",
+    ".tif",
+    ".heic",
+    ".heif",
+    ".avif",
+    ".ico",
+    ".raw",
+    ".cr2",
+    ".nef",
 }
 
 
@@ -82,8 +95,19 @@ def is_image_file(path: Path) -> bool:
 
 
 def md5sum(path: Path) -> str:
-    hash_md5 = hashlib.md5()
-    with open(path, "rb") as f:
+    """
+    Calculate the MD5 hash of a file.
+
+    Note: MD5 is used here for duplicate detection only, not for security purposes.
+
+    Args:
+        path: Path to the file to hash
+
+    Returns:
+        The MD5 hash as a hexadecimal string
+    """
+    hash_md5 = hashlib.md5(usedforsecurity=False)  # Only for duplicate detection
+    with path.open("rb") as f:
         for chunk in iter(lambda: f.read(8192), b""):
             hash_md5.update(chunk)
     return hash_md5.hexdigest()
@@ -99,7 +123,7 @@ class OptimalImageRenamer:
 
     # Ollama generation parameters chosen after benchmarking the various
     # existing renamers.
-    OLLAMA_OPTIONS = {
+    OLLAMA_OPTIONS: ClassVar[dict[str, float | int]] = {
         "temperature": 0.2,
         "top_p": 0.8,
         "top_k": 20,
@@ -107,19 +131,55 @@ class OptimalImageRenamer:
         "num_predict": 60,
     }
 
-    PROMPT = (
+    PROMPT: ClassVar[str] = (
         "Describe this image in **exactly 12 words**. "
         "Focus on the main subject, important objects and the setting. "
         "Be specific, use descriptive adjectives, avoid redundancy."
     )
 
-    STOP_WORDS = {
-        "the", "a", "an", "and", "or", "but", "in", "on", "at", "to", "for", "of",
-        "with", "by", "from", "this", "that", "these", "those", "there", "where",
-        "when", "how", "what", "which",
+    STOP_WORDS: ClassVar[set[str]] = {
+        "the",
+        "a",
+        "an",
+        "and",
+        "or",
+        "but",
+        "in",
+        "on",
+        "at",
+        "to",
+        "for",
+        "of",
+        "with",
+        "by",
+        "from",
+        "this",
+        "that",
+        "these",
+        "those",
+        "there",
+        "where",
+        "when",
+        "how",
+        "what",
+        "which",
     }
 
-    def __init__(self, model: str = "llava:latest", target_words: int = 12, *, max_workers: int | None = None):
+    def __init__(
+        self,
+        model: str = "llava:latest",
+        target_words: int = 12,
+        *,
+        max_workers: int | None = None,
+    ):
+        """
+        Initialize the Optimal Image Renamer.
+
+        Args:
+            model: The Ollama model to use (default: llava:latest)
+            target_words: Target number of words in the generated filename (default: 12)
+            max_workers: Maximum number of parallel worker threads (default: CPU count)
+        """
         self.model = model
         self.target_words = target_words
         self.max_workers = max_workers or max(os.cpu_count() or 4, 4)
@@ -133,18 +193,18 @@ class OptimalImageRenamer:
         if self.gpu_count:
             print(f"🖥️  Detected {self.gpu_count} CUDA GPU(s)")
         else:
-            print("🖥️  No CUDA GPUs detected – will run on CPU (much slower)")
+            print("🖥️  No CUDA GPUs detected - will run on CPU (much slower)")
 
         # Bookkeeping
         self._hashes_seen: set[str] = set()
-        self._results: List[Dict] = []
+        self._results: list[dict] = []
 
         # Local server process handle (if we spawn one)
-        self._ollama_proc: Optional[subprocess.Popen] = None
+        self._ollama_proc: subprocess.Popen | None = None
 
         atexit.register(self._cleanup_server)
 
-        # Quick connectivity test – if it fails we try to spin up a local server.
+        # Quick connectivity test - if it fails we try to spin up a local server.
         self._ensure_ollama_server_ready()
 
     # ---------------------------------------------------------------------
@@ -152,6 +212,13 @@ class OptimalImageRenamer:
     # ---------------------------------------------------------------------
 
     def process(self, directory: Path, *, auto_confirm: bool = False) -> None:
+        """
+        Process all images in a directory, renaming them with AI-generated names.
+
+        Args:
+            directory: Path to the directory containing images
+            auto_confirm: If True, skip confirmation prompts (default: False)
+        """
         images = self._gather_images(directory)
         if not images:
             print("❌ No images found.")
@@ -163,7 +230,9 @@ class OptimalImageRenamer:
                 print("🚪 Aborted by user.")
                 return
 
-        print(f"🚀 Starting rename of {len(images)} images using up to {self.max_workers} threads…\n")
+        print(
+            f"🚀 Starting rename of {len(images)} images using up to {self.max_workers} threads…\n"
+        )
 
         start = time.time()
         total = len(images)
@@ -184,7 +253,10 @@ class OptimalImageRenamer:
                 elapsed = time.time() - start
                 speed = idx / elapsed if elapsed > 0 else 0
 
-                print(f"{status} {idx:4d}/{total} {progress:6.2f}% {speed:5.1f} img/s  {old_name}  {changed_indicator}", flush=True)
+                print(
+                    f"{status} {idx:4d}/{total} {progress:6.2f}% {speed:5.1f} img/s  {old_name}  {changed_indicator}",
+                    flush=True,
+                )
 
         elapsed = time.time() - start
         self._print_summary(elapsed)
@@ -194,11 +266,10 @@ class OptimalImageRenamer:
     # ------------------------------------------------------------------
 
     def _cleanup_server(self) -> None:
-        if getattr(self, "_ollama_proc", None):
-            try:
+        """Clean up the Ollama server process if it was started by this instance."""
+        if self._ollama_proc is not None:
+            with contextlib.suppress(Exception):
                 self._ollama_proc.terminate()
-            except Exception:
-                pass
 
     # ------------------------------------------------------------------
     # GPU & Ollama server helpers
@@ -225,7 +296,9 @@ class OptimalImageRenamer:
 
         print("🔄 Starting local Ollama server…")
         # Start server in the background; inherit env so GPU spread flag is respected.
-        self._ollama_proc = subprocess.Popen(["ollama", "serve"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        self._ollama_proc = subprocess.Popen(
+            ["ollama", "serve"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+        )
 
         # Give the server a bit of time to start up.
         for _ in range(20):
@@ -237,15 +310,27 @@ class OptimalImageRenamer:
             except Exception:
                 continue
 
-        print("❌ Failed to start Ollama server automatically. Please start it manually (\n    ollama serve\n) and retry.")
+        print(
+            "❌ Failed to start Ollama server automatically. Please start it manually (\n    ollama serve\n) and retry."
+        )
         sys.exit(1)
 
     # ------------------------------------------------------------------
-    # Internals – single image pipeline
+    # Internals - single image pipeline
     # ------------------------------------------------------------------
 
-    def _process_one(self, path: Path) -> Dict:
-        out: Dict[str, object] = {
+    def _process_one(self, path: Path) -> dict:
+        """
+        Process a single image file and rename it.
+
+        Args:
+            path: Path to the image file
+
+        Returns:
+            Dictionary containing processing results including success status,
+            original path, new name, description, and any errors
+        """
+        out: dict[str, object] = {
             "original": str(path),
             "success": False,
             "new_name": None,
@@ -279,7 +364,7 @@ class OptimalImageRenamer:
                 counter += 1
 
             if new_path != path:
-                os.rename(path, new_path)
+                path.rename(new_path)
 
             out.update(success=True, new_name=str(new_path), description=desc)
             return out
@@ -289,25 +374,50 @@ class OptimalImageRenamer:
             return out
 
     # ------------------------------------------------------------------
-    # Internals – helper methods
+    # Internals - helper methods
     # ------------------------------------------------------------------
 
     def _load_image(self, path: Path) -> Image.Image:
+        """
+        Load and preprocess an image for AI analysis.
+
+        Converts to RGB mode, resizes if needed, and returns a copy.
+        Never modifies the original file on disk.
+
+        Args:
+            path: Path to the image file
+
+        Returns:
+            Preprocessed PIL Image in RGB mode
+        """
         with Image.open(path) as img:
+            # Convert to RGB mode
             if img.mode == "RGBA":
                 bg = Image.new("RGB", img.size, (255, 255, 255))
                 bg.paste(img, mask=img.split()[3])
-                img = bg
+                processed = bg
             elif img.mode != "RGB":
-                img = img.convert("RGB")
+                processed = img.convert("RGB")
+            else:
+                processed = img.copy()
 
+            # Resize if needed
             max_side = 4096  # Enough for detail, avoids >8K overkill.
-            if max(img.size) > max_side:
-                img.thumbnail((max_side, max_side), Image.Resampling.LANCZOS)
+            if max(processed.size) > max_side:
+                processed.thumbnail((max_side, max_side), Image.Resampling.LANCZOS)
 
-            return img.copy()
+            return processed.copy() if processed is not img else processed
 
     def _describe(self, img: Image.Image) -> str | None:
+        """
+        Generate a description of the image using the LLaVA model.
+
+        Args:
+            img: PIL Image to describe
+
+        Returns:
+            Cleaned description string, or None if generation fails
+        """
         buffer = io.BytesIO()
         img.save(buffer, format="JPEG", quality=95)
         payload = base64.b64encode(buffer.getvalue()).decode()
@@ -330,6 +440,17 @@ class OptimalImageRenamer:
     # ------------------------------------------------------------------
 
     def _clean_description(self, text: str) -> str:
+        """
+        Clean and normalize an AI-generated image description.
+
+        Removes common prefixes, filters stop words, and ensures target length.
+
+        Args:
+            text: Raw description text from the AI model
+
+        Returns:
+            Cleaned, normalized description suitable for filename generation
+        """
         # Strip generic leading phrases.
         for prefix in (
             "the image shows",
@@ -340,7 +461,7 @@ class OptimalImageRenamer:
             "photo of",
         ):
             if text.lower().startswith(prefix):
-                text = text[len(prefix):].strip()
+                text = text[len(prefix) :].strip()
                 break
 
         # Replace punctuation with space, normalise whitespace.
@@ -358,6 +479,15 @@ class OptimalImageRenamer:
         return " ".join(words[: self.target_words])
 
     def _to_filename(self, description: str) -> str:
+        """
+        Convert a description into a filesystem-safe filename.
+
+        Args:
+            description: Cleaned description text
+
+        Returns:
+            Filename-safe string with hyphens, lowercase, limited to 150 chars
+        """
         fname = description.replace(" ", "-").lower()
         fname = re.sub(r"[^a-z0-9-]", "", fname)
         fname = re.sub(r"-+", "-", fname).strip("-")
@@ -367,12 +497,24 @@ class OptimalImageRenamer:
     # Discovery & utility helpers
     # ------------------------------------------------------------------
 
-    def _gather_images(self, directory: Path) -> List[Path]:
+    def _gather_images(self, directory: Path) -> list[Path]:
+        """
+        Recursively scan a directory for valid image files.
+
+        Filters files by size (1KB - 50MB) and validates using PIL.
+        Skips hidden files (starting with '.').
+
+        Args:
+            directory: Path to the directory to scan
+
+        Returns:
+            List of Paths to valid image files
+        """
         print(f"🔍 Scanning '{directory}' for images…")
-        imgs: List[Path] = []
+        imgs: list[Path] = []
         for root, _dirs, files in os.walk(directory):
             for name in files:
-                if name.startswith('.'):
+                if name.startswith("."):
                     continue
                 p = Path(root) / name
                 try:
@@ -387,6 +529,12 @@ class OptimalImageRenamer:
         return imgs
 
     def _print_summary(self, elapsed: float) -> None:
+        """
+        Print processing summary and save detailed JSON report.
+
+        Args:
+            elapsed: Total processing time in seconds
+        """
         ok = [r for r in self._results if r["success"]]
         fail = [r for r in self._results if not r["success"]]
 
@@ -397,23 +545,27 @@ class OptimalImageRenamer:
         print(f"Successfully renamed   : {len(ok)}")
         print(f"Failed / skipped      : {len(fail)}")
         if elapsed:
-            print(f"Elapsed time          : {elapsed:.1f}s ⇒ {len(ok)/elapsed:.1f} images/s")
+            print(f"Elapsed time          : {elapsed:.1f}s ⇒ {len(ok) / elapsed:.1f} images/s")
 
         # Save JSON report next to the directory we processed (first image's parent).
         if self._results:
             out_dir = Path(self._results[0]["original"]).resolve().parent
             report = out_dir / "optimal_image_renamer_report.json"
             with report.open("w", encoding="utf-8") as fh:
-                json.dump({
-                    "timestamp": datetime.utcnow().isoformat() + "Z",
-                    "stats": {
-                        "processed": len(self._results),
-                        "success": len(ok),
-                        "failed": len(fail),
-                        "duration_seconds": elapsed,
+                json.dump(
+                    {
+                        "timestamp": datetime.utcnow().isoformat() + "Z",
+                        "stats": {
+                            "processed": len(self._results),
+                            "success": len(ok),
+                            "failed": len(fail),
+                            "duration_seconds": elapsed,
+                        },
+                        "examples": ok[:10],
                     },
-                    "examples": ok[:10],
-                }, fh, indent=2)
+                    fh,
+                    indent=2,
+                )
             print(f"📄 Detailed report written to {report}")
 
     # ------------------------------------------------------------------
@@ -435,15 +587,37 @@ class OptimalImageRenamer:
 # ---------------------------------------------------------------------------
 
 
-def main() -> None:  # pragma: no cover – no tests in this repo
+def main() -> None:  # pragma: no cover - no tests in this repo
     import argparse
 
-    parser = argparse.ArgumentParser(description="Optimal Image Renamer – in-place, AI-powered")
+    parser = argparse.ArgumentParser(
+        description="Optimal Image Renamer - in-place, AI-powered"
+    )
     parser.add_argument("directory", help="Directory that contains the images")
-    parser.add_argument("--words", "-w", type=int, default=12, help="Number of words to include in the filename (default: 12)")
-    parser.add_argument("--workers", type=int, help="Maximum parallel worker threads (default: #CPU cores)")
-    parser.add_argument("--model", "-m", default="llava:latest", help="Ollama model to use (default: llava:latest)")
-    parser.add_argument("--yes", "-y", action="store_true", help="Skip confirmation prompts (dangerous!)")
+    parser.add_argument(
+        "--words",
+        "-w",
+        type=int,
+        default=12,
+        help="Number of words to include in the filename (default: 12)",
+    )
+    parser.add_argument(
+        "--workers",
+        type=int,
+        help="Maximum parallel worker threads (default: #CPU cores)",
+    )
+    parser.add_argument(
+        "--model",
+        "-m",
+        default="llava:latest",
+        help="Ollama model to use (default: llava:latest)",
+    )
+    parser.add_argument(
+        "--yes",
+        "-y",
+        action="store_true",
+        help="Skip confirmation prompts (dangerous!)",
+    )
 
     args = parser.parse_args()
 
@@ -452,7 +626,9 @@ def main() -> None:  # pragma: no cover – no tests in this repo
         print(f"❌ Path '{target}' does not exist or is not a directory.")
         sys.exit(1)
 
-    renamer = OptimalImageRenamer(model=args.model, target_words=args.words, max_workers=args.workers)
+    renamer = OptimalImageRenamer(
+        model=args.model, target_words=args.words, max_workers=args.workers
+    )
     renamer.process(target, auto_confirm=args.yes)
 
 
