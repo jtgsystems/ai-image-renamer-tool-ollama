@@ -782,6 +782,11 @@ python3 OPTIMALIMAGERENAMER.py test_images --yes
 *Project: AI Image Renamer Tool (Ollama + LLaVA)*
 *Maintainer: JTGSYSTEMS*
 
-## Framework Versions
+## Project Dependencies
 
+*Last updated: 2025-10-26*
+
+This is a Python project. See the following files for dependency information:
+
+- `requirements.txt` - Python package dependencies
 
