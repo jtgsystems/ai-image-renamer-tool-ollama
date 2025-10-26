@@ -781,3 +781,7 @@ python3 OPTIMALIMAGERENAMER.py test_images --yes
 *Last Updated: 2025-10-26*
 *Project: AI Image Renamer Tool (Ollama + LLaVA)*
 *Maintainer: JTGSYSTEMS*
+
+## Framework Versions
+
+
