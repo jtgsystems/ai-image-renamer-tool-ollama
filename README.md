@@ -2,7 +2,7 @@
 
 # 🎯 Optimal Image Renamer - AI-Powered Bulk Photo Organizer
 
-> 🚀 **Lightning-fast AI image renaming** using Ollama's LLaVA model with multi-GPU acceleration
+> 🚀 **Lightning-fast AI image renaming** using Ollama's qwen3-vl model with multi-GPU acceleration
 
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![License: Public Domain](https://img.shields.io/badge/license-Public%20Domain-green.svg)](LICENSE)
@@ -17,7 +17,7 @@ Transform chaotic image collections into organized, searchable libraries with **
 ### ✨ Key Features
 
 - 🔒 **100% Safe** - Only renames files, never modifies image data
-- 🧠 **AI-Powered** - Uses LLaVA vision model for accurate descriptions
+- 🧠 **AI-Powered** - Uses qwen3-vl vision model for accurate descriptions
 - ⚡ **Multi-GPU Ready** - Automatic NVIDIA GPU detection and distribution
 - 🎯 **Zero Dependencies** - Auto-installs required packages on first run
 - 📊 **Real-time Progress** - Live throughput monitoring with detailed logs
@@ -57,13 +57,13 @@ Transform chaotic image collections into organized, searchable libraries with **
 
 ### 📋 Prerequisites
 
-1. **Install Ollama** and pull the LLaVA model:
+1. **Install Ollama** and pull the qwen3-vl model:
    ```bash
    # Start Ollama server
    ollama serve
    
-   # Download LLaVA model (one-time setup)
-   ollama pull llava:latest
+   # Download qwen3-vl model (one-time setup)
+   ollama pull qwen3-vl
    ```
 
 2. **Python 3.8+** - Required packages auto-install on first run
@@ -156,7 +156,7 @@ chmod +x run_multi_gpu_rename.sh
 
 1. **📁 Smart File Discovery** - Recursively scans for valid images (1KB-50MB)
 2. **🖼️ Memory-Safe Processing** - Loads and scales images in-memory only
-3. **🤖 AI Analysis** - Sends base64-encoded images to LLaVA with optimized prompts
+3. **🤖 AI Analysis** - Sends base64-encoded images to qwen3-vl with optimized prompts
 4. **📝 Intelligent Naming** - Generates descriptive, filename-safe slugs
 5. **🔄 Safe Renaming** - Renames files with collision detection and numeric suffixes
 
@@ -229,7 +229,7 @@ After each run, find detailed analytics in `optimal_image_renamer_report.json`:
 ### 📦 Required Software
 
 - **Python 3.8+** (3.10+ recommended)
-- **Ollama** with LLaVA model
+- **Ollama** with qwen3-vl model
 - **NVIDIA GPU** (optional but recommended)
 
 ### 🔧 Auto-Installing Dependencies
@@ -254,7 +254,7 @@ The tool automatically installs these on first run:
 **A:** Reduce `--workers` count or close other GPU applications
 
 **Q: Very slow processing**  
-**A:** Ensure LLaVA model is downloaded: `ollama pull llava:latest`
+**A:** Ensure qwen3-vl model is downloaded: `ollama pull qwen3-vl`
 
 ### 💬 Getting Help
 
@@ -276,7 +276,7 @@ The tool automatically installs these on first run:
 
 ## 🏷️ Keywords & Tags
 
-`ai image renamer` · `gpu image processing` · `bulk photo organizer` · `automatic file naming` · `llava image analysis` · `seo image optimization` · `descriptive filenames` · `ollama integration` · `python image tools` · `nvidia gpu acceleration` · `photography workflow` · `content organization` · `semantic file naming` · `batch image processing` · `ai photo categorization`
+`ai image renamer` · `gpu image processing` · `bulk photo organizer` · `automatic file naming` · `qwen3-vl image analysis` · `seo image optimization` · `descriptive filenames` · `ollama integration` · `python image tools` · `nvidia gpu acceleration` · `photography workflow` · `content organization` · `semantic file naming` · `batch image processing` · `ai photo categorization`
 
 ---
 

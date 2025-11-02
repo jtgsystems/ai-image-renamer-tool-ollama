@@ -3,9 +3,9 @@
 OPTIMAL IMAGE RENAMER
 =====================
 A **one-file, drop-in** tool that renames images *in-place* using
-Ollama's LLaVA vision-language model.  It tries to combine the best
+Ollama's qwen3-vl vision-language model.  It tries to combine the best
 ideas that are scattered across all previous renamers that live in the
-`llava-image-renamer` folder:
+`qwen3-vl-image-renamer` folder:
 
 * Safe in-place renaming with automatic conflict resolution.
 * Duplicate detection via MD5 hash so the same image is never processed
@@ -19,7 +19,7 @@ ideas that are scattered across all previous renamers that live in the
   but can be overridden with `--workers`.
 
 The result is a script that should “just work” on any machine that has
-Python ≥3.8, Ollama and the *llava* model installed.
+Python ≥3.8, Ollama and the *qwen3-vl* model installed.
 """
 
 from __future__ import annotations
@@ -119,7 +119,7 @@ class OptimalImageRenamer:
         "when", "how", "what", "which",
     }
 
-    def __init__(self, model: str = "llava:latest", target_words: int = 12, *, max_workers: int | None = None):
+    def __init__(self, model: str = "qwen3-vl", target_words: int = 12, *, max_workers: int | None = None):
         self.model = model
         self.target_words = target_words
         self.max_workers = max_workers or max(os.cpu_count() or 4, 4)
@@ -442,7 +442,7 @@ def main() -> None:  # pragma: no cover – no tests in this repo
     parser.add_argument("directory", help="Directory that contains the images")
     parser.add_argument("--words", "-w", type=int, default=12, help="Number of words to include in the filename (default: 12)")
     parser.add_argument("--workers", type=int, help="Maximum parallel worker threads (default: #CPU cores)")
-    parser.add_argument("--model", "-m", default="llava:latest", help="Ollama model to use (default: llava:latest)")
+    parser.add_argument("--model", "-m", default="qwen3-vl", help="Ollama model to use (default: qwen3-vl)")
     parser.add_argument("--yes", "-y", action="store_true", help="Skip confirmation prompts (dangerous!)")
 
     args = parser.parse_args()

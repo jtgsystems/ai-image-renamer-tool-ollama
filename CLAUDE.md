@@ -6,12 +6,12 @@ This file contains project architecture, workflow documentation, and development
 
 ## Project Overview
 
-**AI Image Renamer Tool** is a high-performance, GPU-accelerated Python application that intelligently renames image files using Ollama's LLaVA vision-language model. The tool generates descriptive, SEO-friendly filenames by analyzing image content with AI.
+**AI Image Renamer Tool** is a high-performance, GPU-accelerated Python application that intelligently renames image files using Ollama's qwen3-vl vision-language model. The tool generates descriptive, SEO-friendly filenames by analyzing image content with AI.
 
 ### Key Value Propositions
 
 - **100% Safe**: Only renames files, never modifies image data
-- **AI-Powered**: Uses LLaVA vision model for accurate content descriptions
+- **AI-Powered**: Uses qwen3-vl vision model for accurate content descriptions
 - **Multi-GPU Ready**: Automatic NVIDIA GPU detection with workload distribution
 - **Zero Manual Configuration**: Auto-installs dependencies on first run
 - **Production-Grade**: Includes duplicate detection, collision resolution, and comprehensive error handling
@@ -82,7 +82,7 @@ pillow
 
 #### AI/ML Framework
 - **Ollama**: Local LLM inference server
-  - Model: `llava:latest` (default, configurable)
+  - Model: `qwen3-vl` (default, configurable)
   - API: Python client library via `ollama` package
   - Vision-Language Model: Processes images and generates text descriptions
 
@@ -125,7 +125,7 @@ pillow
    ```bash
    # Install Ollama (see ollama.ai)
    ollama serve
-   ollama pull llava:latest
+   ollama pull qwen3-vl
    ```
 
 2. **Python 3.8+**:
@@ -162,7 +162,7 @@ python3 OPTIMALIMAGERENAMER.py /path/to/images --words 15
 python3 OPTIMALIMAGERENAMER.py /path/to/images --workers 8
 
 # Use different Ollama model
-python3 OPTIMALIMAGERENAMER.py /path/to/images --model llava:13b
+python3 OPTIMALIMAGERENAMER.py /path/to/images --model qwen3-vl:13b
 ```
 
 #### Advanced Multi-GPU Setup
@@ -250,7 +250,7 @@ OptimalImageRenamer
 1. JPEG encode at quality=95 → BytesIO buffer
 2. Base64 encode for API transmission
 3. Ollama API call with:
-   - Model: `llava:latest`
+   - Model: `qwen3-vl`
    - Prompt: 12-word description request
    - Images: [base64_payload]
    - Options: Conservative temperature/sampling
@@ -501,10 +501,10 @@ nvcc --version
 ollama serve
 
 # Verify model is downloaded
-ollama list | grep llava
+ollama list | grep qwen3-vl
 
 # Pull model if missing
-ollama pull llava:latest
+ollama pull qwen3-vl
 ```
 
 ### Issue: Out of Memory Errors
@@ -527,7 +527,7 @@ nvidia-smi  # Check what's using VRAM
 **Fix**:
 ```bash
 # Ensure model is local (not streaming from network)
-ollama pull llava:latest
+ollama pull qwen3-vl
 
 # Check GPU is being used
 nvidia-smi  # Should show ollama process
@@ -543,7 +543,7 @@ python OPTIMALIMAGERENAMER.py /path --workers 16
 **Fix**:
 ```bash
 # Try larger model for better descriptions
-python OPTIMALIMAGERENAMER.py /path --model llava:13b
+python OPTIMALIMAGERENAMER.py /path --model qwen3-vl:13b
 
 # Increase word count for more specificity
 python OPTIMALIMAGERENAMER.py /path --words 20
@@ -679,7 +679,7 @@ OLLAMA_OPTIONS = {"temperature": 0.1, "top_k": 40}
 #### Ollama (Required)
 - **Purpose**: Local LLM inference server
 - **Install**: https://ollama.ai/download
-- **Models**: `ollama pull llava:latest`
+- **Models**: `ollama pull qwen3-vl`
 
 #### NVIDIA GPU Drivers (Optional, Recommended)
 - **Purpose**: GPU acceleration for 10x+ speed improvement
@@ -700,7 +700,7 @@ OLLAMA_OPTIONS = {"temperature": 0.1, "top_k": 40}
 
 ### Related Projects
 - **Ollama**: https://ollama.ai
-- **LLaVA Model**: https://llava-vl.github.io
+- **qwen3-vl Model**: https://qwen3-vl-vl.github.io
 - **Pillow**: https://pillow.readthedocs.io
 
 ---
@@ -715,7 +715,7 @@ python3 OPTIMALIMAGERENAMER.py /path/to/images
 python3 OPTIMALIMAGERENAMER.py /path/to/images --yes
 
 # High-quality mode (more words, larger model)
-python3 OPTIMALIMAGERENAMER.py /path/to/images --words 20 --model llava:13b
+python3 OPTIMALIMAGERENAMER.py /path/to/images --words 20 --model qwen3-vl:13b
 
 # Maximum performance (multi-GPU)
 ./run_multi_gpu_rename.sh  # See README for script
@@ -726,8 +726,8 @@ nvidia-smi
 # Verify Ollama is running
 curl http://localhost:11434
 
-# Pull/update LLaVA model
-ollama pull llava:latest
+# Pull/update qwen3-vl model
+ollama pull qwen3-vl
 ```
 
 ---
@@ -768,7 +768,7 @@ cd ai-image-renamer-tool-ollama
 
 # Ensure Ollama is running
 ollama serve &
-ollama pull llava:latest
+ollama pull qwen3-vl
 
 # Test with sample images
 mkdir test_images
@@ -779,7 +779,7 @@ python3 OPTIMALIMAGERENAMER.py test_images --yes
 ---
 
 *Last Updated: 2025-10-26*
-*Project: AI Image Renamer Tool (Ollama + LLaVA)*
+*Project: AI Image Renamer Tool (Ollama + qwen3-vl)*
 *Maintainer: JTGSYSTEMS*
 
 ## Project Dependencies
