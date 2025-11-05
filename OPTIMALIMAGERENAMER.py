@@ -50,8 +50,6 @@ try:
     from PIL import Image  # type: ignore
 except ModuleNotFoundError as e:
     print(f"⚠️  Missing dependency: {e.name}. Installing… (this can take a moment)")
-    import subprocess
-
     pkgs = ["ollama", "pillow"]
     subprocess.check_call([sys.executable, "-m", "pip", "install", "--upgrade", *pkgs])
 
@@ -82,7 +80,7 @@ def is_image_file(path: Path) -> bool:
 
 
 def md5sum(path: Path) -> str:
-    hash_md5 = hashlib.md5()
+    hash_md5 = hashlib.md5(usedforsecurity=False)
     with open(path, "rb") as f:
         for chunk in iter(lambda: f.read(8192), b""):
             hash_md5.update(chunk)
@@ -184,7 +182,11 @@ class OptimalImageRenamer:
                 elapsed = time.time() - start
                 speed = idx / elapsed if elapsed > 0 else 0
 
-                print(f"{status} {idx:4d}/{total} {progress:6.2f}% {speed:5.1f} img/s  {old_name}  {changed_indicator}", flush=True)
+                print(
+                    f"{status} {idx:4d}/{total} {progress:6.2f}% {speed:5.1f} img/s  "
+                    f"{old_name}  {changed_indicator}",
+                    flush=True
+                )
 
         elapsed = time.time() - start
         self._print_summary(elapsed)
@@ -194,9 +196,10 @@ class OptimalImageRenamer:
     # ------------------------------------------------------------------
 
     def _cleanup_server(self) -> None:
-        if getattr(self, "_ollama_proc", None):
+        proc = getattr(self, "_ollama_proc", None)
+        if proc is not None:
             try:
-                self._ollama_proc.terminate()
+                proc.terminate()
             except Exception:
                 pass
 
@@ -237,7 +240,10 @@ class OptimalImageRenamer:
             except Exception:
                 continue
 
-        print("❌ Failed to start Ollama server automatically. Please start it manually (\n    ollama serve\n) and retry.")
+        print(
+            "❌ Failed to start Ollama server automatically. "
+            "Please start it manually (\n    ollama serve\n) and retry."
+        )
         sys.exit(1)
 
     # ------------------------------------------------------------------
@@ -440,7 +446,10 @@ def main() -> None:  # pragma: no cover – no tests in this repo
 
     parser = argparse.ArgumentParser(description="Optimal Image Renamer – in-place, AI-powered")
     parser.add_argument("directory", help="Directory that contains the images")
-    parser.add_argument("--words", "-w", type=int, default=12, help="Number of words to include in the filename (default: 12)")
+    parser.add_argument(
+        "--words", "-w", type=int, default=12,
+        help="Number of words to include in the filename (default: 12)"
+    )
     parser.add_argument("--workers", type=int, help="Maximum parallel worker threads (default: #CPU cores)")
     parser.add_argument("--model", "-m", default="qwen3-vl", help="Ollama model to use (default: qwen3-vl)")
     parser.add_argument("--yes", "-y", action="store_true", help="Skip confirmation prompts (dangerous!)")
