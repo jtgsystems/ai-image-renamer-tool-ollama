@@ -50,7 +50,7 @@ ai-image-renamer-tool-ollama/
 #### OPTIMALIMAGERENAMER.py
 - **Lines of Code**: 460
 - **Architecture**: Object-oriented with `OptimalImageRenamer` facade class
-- **Dependencies**: `ollama`, `pillow`, standard library (pathlib, concurrent.futures, hashlib, base64)
+- **Dependencies**: `ollama>=0.6.1`, `Pillow>=12.0.0`, standard library (pathlib, concurrent.futures, hashlib, base64)
 - **Entry Point**: CLI via `argparse` in `main()` function
 
 #### requirements.txt
